@@ -1,0 +1,857 @@
+<!DOCTYPE html> 
+<html lang="pt-br"> 
+<head> 
+    <meta charset="UTF-8"> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <title>Sistema de Pesagem e Gestão</title> 
+    <style> 
+        :root { 
+            --primary: #2c3e50; 
+            --secondary: #3498db; 
+            --success: #27ae60; 
+            --danger: #e74c3c; 
+            --warning: #f39c12;
+            --background: #f0f4f8; 
+            --highlight: #e8f4f8; 
+            --border-color: #e1e8ed; 
+        } 
+
+        body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--background); margin: 0; padding: 25px; color: #333; } 
+        input[type="text"] { text-transform: uppercase; } 
+
+        /* ================= TELAS E ABAS ================= */
+        #tela-login { display: flex; height: 100vh; justify-content: center; align-items: center; background: var(--primary); position: absolute; top:0; left:0; width: 100%; z-index: 500;}
+        #tela-sistema { display: none; }
+        .secao { display: none; animation: fadeIn 0.3s ease; }
+        .secao.ativa { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .login-box { background: white; padding: 40px; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); width: 100%; max-width: 350px; text-align: center; }
+        .login-box input { width: 90%; padding: 12px; margin-bottom: 15px; border: 1px solid #ced4da; border-radius: 6px; }
+
+        .menu-abas { margin-bottom: 25px; display: flex; gap: 10px; }
+        .btn-aba { background: #cbd5e1; color: #334155; padding: 12px 25px; border-radius: 6px; font-size: 1em; font-weight: bold;}
+        .btn-aba.ativa { background: var(--secondary); color: white; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        .btn-aba-admin { background: #94a3b8; color: white; }
+        .btn-aba-admin.ativa { background: var(--primary); }
+
+        /* ================= CABEÇALHO ================= */
+        header { background: var(--primary); color: white; padding: 20px 25px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); } 
+        .header-left { display: flex; flex-direction: column; gap: 8px; } 
+        .header-left h1 { margin: 0; font-size: 1.6em; font-weight: 600; letter-spacing: 0.5px; } 
+        
+        .info-lote { font-size: 0.85em; color: #cbd5e1; display: flex; align-items: center; gap: 10px; }
+        .info-lote input[type="date"] { background: transparent; border: 1px solid rgba(255,255,255,0.2); color: white; padding: 2px 5px; border-radius: 4px; outline: none; }
+
+        .backup-container { background: rgba(255,255,255,0.15); padding: 6px 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.1); transition: all 0.2s; } 
+        .backup-container:hover { background: rgba(255,255,255,0.25); } 
+        .backup-container label { font-size: 0.85em; font-weight: 600; color: #fff; cursor: pointer; } 
+        .backup-container input[type="file"] { font-size: 12px; padding: 4px; background: white; color: var(--primary); border: none; border-radius: 4px; cursor: pointer; font-weight: bold; } 
+
+        /* ================= BOTÕES ================= */
+        button { cursor: pointer; border: none; border-radius: 6px; padding: 10px 20px; font-weight: 600; font-size: 0.9em; transition: all 0.2s ease; text-transform: uppercase; letter-spacing: 0.5px; } 
+        button:hover { transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); } 
+        button:active { transform: translateY(0); box-shadow: none; } 
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; } 
+        
+        .btn-primary { background: var(--secondary); color: white; } 
+        .btn-success { background: var(--success); color: white; } 
+        .btn-danger { background: var(--danger); color: white; } 
+        .btn-warning { background: var(--warning); color: white; } 
+        .btn-secondary { background: #95a5a6; color: white; } 
+
+        /* ================= TABELAS ================= */
+        .table-container { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); overflow: auto; margin-bottom: 25px; border: 1px solid var(--border-color); } 
+        table { width: 100%; border-collapse: separate; border-spacing: 0; min-width: 600px;} 
+        th, td { padding: 15px 20px; text-align: left; border-bottom: 1px solid var(--border-color); } 
+        thead th { background-color: #f8fafc; color: var(--primary); font-weight: 700; font-size: 0.9em; text-transform: uppercase; border-bottom: 2px solid var(--border-color); } 
+        tbody tr:hover:not(.linha-selecionada):not([id^="linha-operacao-"]) { background-color: #f8fafc; } 
+
+        .linha-selecionada { background-color: var(--highlight) !important; transition: all 0.3s ease; } 
+        .linha-selecionada td { border-bottom: none !important; border-top: 2px solid var(--secondary); color: var(--primary); } 
+        .linha-selecionada td:first-child { border-left: 4px solid var(--secondary); } 
+        .td-operacao { padding: 0 !important; background-color: var(--highlight); border-bottom: 2px solid var(--secondary) !important; border-left: 4px solid var(--secondary); } 
+
+        /* ================= OPERAÇÃO ================= */
+        #areaOperacao { background: white; margin: 0 20px 20px 20px; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border: 1px solid var(--border-color); border-top: 4px solid var(--secondary); } 
+        #areaOperacao h2 { margin-top: 0; font-size: 1.3em; color: var(--primary); display: flex; align-items: center; gap: 10px; } 
+        #areaOperacao h2::before { content: "↳"; color: var(--secondary); font-size: 1.2em; } 
+        
+        .grid-operacao { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 18px; margin-bottom: 20px; } 
+        .form-group { display: flex; flex-direction: column; gap: 6px; } 
+        .form-group label { font-size: 0.85em; font-weight: 700; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; } 
+        
+        input, select { padding: 12px; border: 1px solid #ced4da; border-radius: 6px; font-size: 1em; color: #333; transition: all 0.2s ease; background-color: #fff; } 
+        input:focus, select:focus { border-color: var(--secondary); box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.2); outline: none; } 
+        input:disabled, input[readonly], select:disabled { background-color: #e9ecef; cursor: not-allowed; color: #6c757d; } 
+
+        .resultado-container { grid-column: 1 / -1; display: flex; flex-direction: column; justify-content: center; align-items: center; background: #f8fafc; padding: 25px 15px; border-radius: 8px; border: 2px dashed var(--secondary); margin-top: 10px; } 
+        .resultado-liquido { font-size: 3em; font-weight: 800; color: var(--success); text-align: center; line-height: 1; } 
+        .resultado-liquido span { font-family: monospace; letter-spacing: -1px; }
+        .resultado-liquido small { font-size: 0.4em; color: #64748b; vertical-align: middle; }
+        .erro-mensagem { font-size: 14px; color: var(--danger); font-weight: bold; text-align: center; min-height: 15px; margin-top: 8px; text-transform: uppercase; } 
+
+        /* ================= KANBAN ================= */
+        .board-gestao { display: flex; gap: 20px; }
+        .coluna { flex: 1; background: #e2e8f0; padding: 15px; border-radius: 8px; min-height: 60vh; border-top: 4px solid #94a3b8;}
+        .coluna#col-aguardando { border-color: #f59e0b; }
+        .coluna#col-patio { border-color: var(--secondary); }
+        .coluna#col-finalizado { border-color: var(--success); }
+        .coluna h3 { text-align: center; color: #334155; margin-top: 0; font-size: 1em;}
+        .card { background: white; padding: 15px; margin-bottom: 10px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); border-left: 4px solid #cbd5e1; position: relative;}
+        .card.status-aguardando { border-color: #f59e0b; }
+        .card.status-patio { border-color: var(--secondary); }
+        .card.status-finalizado { border-color: var(--success); opacity: 0.8;}
+        .card-prazo { position: absolute; top: 10px; right: 10px; font-size: 0.7em; background: #fee2e2; color: #ef4444; padding: 3px 6px; border-radius: 4px; font-weight: bold; text-align: right;}
+
+        /* ================= MODAIS ================= */
+        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(4px); } 
+        .modal-content { background: white; margin: 5% auto; padding: 30px; width: 450px; max-height: 80vh; overflow-y: auto; border-radius: 12px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: modalSlideIn 0.3s ease-out; } 
+        .modal-content h2 { color: var(--primary); margin-top: 0; border-bottom: 2px solid #f1f5f9; padding-bottom: 15px; margin-bottom: 20px; } 
+        @keyframes modalSlideIn { from { transform: translateY(-30px); opacity: 0; } to { transform: translateY(0); opacity: 1; } } 
+
+        /* ================= IMPRESSÃO ================= */
+        .overlay-impressao { position: fixed; top:0; left:0; width:100%; height:100%; background: rgba(0,0,0,0.95); z-index: 2000; display:flex; flex-direction: column; justify-content: center; align-items: center; } 
+        .ticket-wrapper { background: white; padding: 20px; border-radius: 4px; width: 95%; max-width: 900px; box-shadow: 0 0 20px rgba(255,255,255,0.1); overflow: auto; } 
+        .ticket-matricial { font-family: 'Courier New', Courier, monospace; font-size: 14px; color: #000; line-height: 1.2; margin: 0; font-weight: bold; } 
+        .ticket-acoes { margin-top: 25px; display: flex; gap: 15px; } 
+
+        @media print { 
+            .no-print { display: none !important; } 
+            body, html { background: white; padding: 0; margin: 0; } 
+            #telaImpressao, #telaImpressao *, #conteudoTicket, #conteudoTicket * { visibility: visible; } 
+            #telaImpressao { position: absolute; left: 0; top: 0; width: 100%; height: auto; display: block !important; background: none !important; } 
+            .ticket-wrapper { margin: 0 !important; padding: 0 !important; border: none !important; box-shadow: none !important; width: 100%; display: block !important; overflow: hidden; } 
+            .ticket-matricial { font-size: 10px !important; line-height: 1.1 !important; width: 100%; margin: 0 !important; padding-top: 15mm !important; padding-left: 10mm !important; color: black; white-space: pre; } 
+            @page { margin: 0; size: auto; } 
+        } 
+    </style> 
+</head> 
+<body> 
+
+<div id="tela-login" class="no-print">
+    <div class="login-box">
+        <h2 style="color: var(--primary); margin-top: 0;">IPIRANGA METAIS</h2>
+        <p style="color: #64748b; font-size: 0.9em; margin-bottom: 25px;">Autenticação do Sistema</p>
+        <input type="text" id="usuario" placeholder="Login (ex: admin)" onkeypress="if(event.key === 'Enter') fazerLogin()">
+        <input type="password" id="senha" placeholder="Senha" onkeypress="if(event.key === 'Enter') fazerLogin()">
+        <button class="btn-primary" style="width: 100%; margin-top: 10px;" onclick="fazerLogin()">Acessar Sistema</button>
+    </div>
+</div>
+
+<div id="tela-sistema">
+    <header class="no-print"> 
+        <div class="header-left"> 
+            <h1>IPIRANGA METAIS - SISTEMA INTEGRADO</h1> 
+            <div class="info-lote">
+                <span>Lote Atual: <strong>SUCATA GERAL</strong></span> | 
+                <span>Fechamento Diário: <input type="date" value="2026-04-07" readonly></span>
+            </div>
+            <div class="backup-container" style="margin-top: 5px;"> 
+                <label for="importarJson">Restaurar Pesagem (.json):</label> 
+                <input type="file" id="importarJson" accept=".json" onchange="importarBackup(event)"> 
+            </div> 
+        </div> 
+        <div style="display: flex; flex-direction: column; align-items: flex-end; gap: 10px;">
+            <span style="font-size: 0.9em;">Olá, <strong id="nomeOperador"></strong> (<span id="perfilOperador"></span>) | <a href="#" onclick="sair()" style="color:#fca5a5;">Sair</a></span>
+            <button class="btn-success" id="btnCadastrarNovo" onclick="abrirModal()">+ Registrar Caminhão</button> 
+        </div>
+    </header> 
+
+    <div class="menu-abas no-print">
+        <button class="btn-aba ativa" id="aba-pesagem" onclick="mudarAba('pesagem')">Módulo 1: Balança (Produção)</button>
+        <button class="btn-aba" id="aba-gestao" onclick="mudarAba('gestao')">Módulo 2: Kanban (Pátio)</button>
+        <button class="btn-aba btn-aba-admin" id="aba-usuarios" onclick="mudarAba('usuarios')" style="display: none;">Módulo Admin: Usuários</button>
+    </div>
+
+    <main id="secao-pesagem" class="secao ativa no-print"> 
+        <div class="table-container"> 
+            <table> 
+                <thead> 
+                    <tr> 
+                        <th>Tipo</th> 
+                        <th>Responsável</th> 
+                        <th>Placa</th> 
+                        <th>Data</th> 
+                        <th>Classificador</th> 
+                        <th>Prazo Limite</th> 
+                        <th>Ações</th> 
+                    </tr> 
+                </thead> 
+                <tbody id="corpoTabela"></tbody> 
+            </table> 
+        </div> 
+
+        <div id="areaOperacao" style="display:none;"> 
+            <h2 id="tituloOperacao"></h2> 
+            <div class="grid-operacao"> 
+                <div class="form-group"> 
+                    <label>Mercadoria:</label> 
+                    <select id="tipoSucata" onchange="calcularLiquido()"> 
+                        <option value="SUC. DE FERRO">SUC. DE FERRO</option> 
+                        <option value="SUC. FERRO FUNDIDO">SUC. FERRO FUNDIDO</option> 
+                        <option value="SUC. CAVACO DE FERRO">SUC. CAVACO DE FERRO</option> 
+                        <option value="SUC. MANGANÊS">SUC. MANGANÊS</option> 
+                        <option value="SUC. FERRO MIÚDA">SUC. FERRO MIÚDA</option> 
+                        <option value="SUC. FERRO ESTAMPARIA">SUC. FERRO ESTAMPARIA</option> 
+                        <option value="SUC. FERRO GRAÚDA">SUC. FERRO GRAÚDA</option> 
+                        <option value="SUC. FERRO/ESCOLHA">SUC. FERRO/ESCOLHA</option> 
+                        <option value="SUC. FERRO DIVERSOS">SUC. FERRO DIVERSOS</option>
+                        <option value="MATERIAL A CLASSIFICAR">MATERIAL A CLASSIFICAR</option>
+                        <option value="LATINHA A CLASSIFICAR">LATINHA A CLASSIFICAR</option> 
+                        <option value="INOX A CLASSIFICAR">INOX A CLASSIFICAR</option> 
+                    </select> 
+                </div> 
+                <div class="form-group"> 
+                    <label>Bruto (kg):</label> 
+                    <input type="number" id="pesoAtualBruto" step="0.01" readonly tabindex="-1"> 
+                </div> 
+                <div class="form-group"> 
+                    <label>Tara (kg):</label> 
+                    <input type="number" id="pesoTara" step="0.01" min="0" onkeydown="bloquearSimbolos(event)" oninput="travarTaraAoBruto(this); calcularLiquido();"> 
+                </div> 
+                <div class="form-group"> 
+                    <label>Desc. Manual (kg):</label> 
+                    <input type="number" id="descontoManual" step="0.01" min="0" readonly onkeydown="bloquearSimbolos(event)" oninput="travarDescontoAoLiquido(this); verificarInputDesconto(); calcularLiquido();"> 
+                </div> 
+                <div class="form-group"> 
+                    <label>Tipo Desconto:</label> 
+                    <select id="tipoDescontoManual" disabled onchange="calcularLiquido()"> 
+                        <option value="NENHUM">Nenhum</option> 
+                        <option value="PNEU">PNEU</option> 
+                        <option value="UMIDADE">UMIDADE</option> 
+                        <option value="TERRA">TERRA</option> 
+                        <option value="PLÁSTICO">PLÁSTICO</option> 
+                        <option value="DIVERSOS">DIVERSOS</option> 
+                    </select> 
+                </div> 
+                <div class="form-group"> 
+                    <label>Obs. (20 car.):</label> 
+                    <input type="text" id="obsItem" maxlength="20" autocomplete="off"> 
+                </div> 
+                
+                <div class="resultado-container"> 
+                    <div class="resultado-liquido"><span id="resLiquido">0,00</span> <small>KG</small></div> 
+                    <div id="msgErroPeso" class="erro-mensagem"></div> 
+                </div> 
+            </div> 
+
+            <div style="display: flex; gap: 15px; margin-bottom: 25px;"> 
+                <button class="btn-success" id="btnAdicionar" onclick="adicionarItem()" style="flex:1; padding: 15px; font-size: 1.1em;" disabled>Adicionar Item (Tara)</button> 
+                <button class="btn-danger" onclick="finalizarBoleto()" style="flex:1; padding: 15px; font-size: 1.1em;">Finalizar Pesagem / Imprimir</button> 
+            </div> 
+            
+            <div class="table-container" style="box-shadow: none; border: 1px solid #e1e8ed; margin-bottom: 0;"> 
+                <table style="background: #fff;"> 
+                    <thead style="background: #f8fafc;"> 
+                        <tr> 
+                            <th style="font-size: 0.8em;">Material Adicionado</th> 
+                            <th style="font-size: 0.8em;">Líquido</th> 
+                            <th style="font-size: 0.8em;">Observação</th> 
+                            <th style="font-size: 0.8em;">Ação</th> 
+                        </tr> 
+                    </thead> 
+                    <tbody id="corpoItens"></tbody> 
+                </table> 
+            </div> 
+        </div> 
+    </main> 
+
+    <div id="secao-gestao" class="secao no-print">
+        <div class="board-gestao">
+            <div class="coluna" id="col-aguardando">
+                <h3>Aguardando Classificação</h3>
+                <div id="lista-aguardando"></div>
+            </div>
+            <div class="coluna" id="col-patio">
+                <h3>Já Possui Pesagens (Pátio)</h3>
+                <div id="lista-patio"></div>
+            </div>
+            <div class="coluna" id="col-finalizado">
+                <h3>Finalizados</h3>
+                <div id="lista-finalizado"></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="secao-usuarios" class="secao no-print">
+        <div style="display: flex; justify-content: space-between; margin-bottom: 20px;">
+            <h2 style="margin: 0; color: var(--primary);">Gestão de Usuários e Perfis</h2>
+            <button class="btn-success" onclick="abrirModalUsuario()">+ Cadastrar Novo Usuário</button>
+        </div>
+        <div class="table-container"> 
+            <table> 
+                <thead> 
+                    <tr> 
+                        <th>Nome</th> 
+                        <th>Login</th> 
+                        <th>Perfil (Atribuição)</th> 
+                        <th>Ações</th> 
+                    </tr> 
+                </thead> 
+                <tbody id="corpoTabelaUsuarios"></tbody> 
+            </table> 
+        </div>
+    </div>
+</div>
+
+<div id="modalCadastro" class="modal no-print"> 
+    <div class="modal-content"> 
+        <h2>Novo Registro de Caminhão</h2> 
+        <div class="form-group"> 
+            <label>Tipo:</label> 
+            <select id="tipoRegistro" onchange="alternarCamposRegistro(); validarFormularioPrincipal();"> 
+                <option value="cliente">Fornecedor (Sucata)</option> 
+                <option value="motorista">Motorista (Empresa)</option> 
+            </select> 
+        </div> 
+        
+        <div id="camposFornecedor"> 
+            <div class="form-group"><label>Nome Fornecedor:</label><input type="text" id="nomeFornecedor" maxlength="40" oninput="validarFormularioPrincipal()"></div> 
+            <div class="form-group"><label>CPF/CNPJ:</label><input type="text" id="cpfCnpj" oninput="mascaraMutuario(this); validarFormularioPrincipal();"></div> 
+        </div> 
+
+        <div id="camposMotorista" style="display:none"> 
+            <div class="form-group"><label>Nº Ordem:</label><input type="text" id="ordemMotorista" maxlength="15" oninput="this.value = this.value.replace(/\D/g, ''); validarFormularioPrincipal()"></div> 
+            <div class="form-group"><label>Motorista:</label><input type="text" id="nomeMotorista" maxlength="40" oninput="validarFormularioPrincipal()"></div> 
+        </div> 
+
+        <div class="form-group"><label>Placa:</label><input type="text" id="placa" placeholder="AAA-0000" oninput="mascaraPlaca(this); validarFormularioPrincipal();" maxlength="8"></div> 
+        <div class="form-group"><label>Peso Inicial (kg):</label><input type="number" id="pesoBrutoInicial" step="0.01" min="0" onkeydown="bloquearSimbolos(event)" oninput="forçarLimitePeso(this); validarFormularioPrincipal();"></div> 
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 15px; background: #f8fafc; padding: 10px; border-radius: 6px; border: 1px dashed #cbd5e1;">
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label style="color:var(--secondary)">Membro (Classificador):</label>
+                <select id="classificadorAtribuido"></select>
+            </div>
+            <div class="form-group" style="grid-column: 1 / -1;">
+                <label style="color:var(--secondary)">Prazo (Data e Hora):</label>
+                <input type="datetime-local" id="prazoLiberacao" style="text-transform: none; font-family: inherit;">
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:25px"> 
+            <button class="btn-success" id="btnSalvarRegistro" onclick="salvarNovoCliente()" style="flex:1; opacity: 0.5;" disabled>Salvar</button> 
+            <button class="btn-secondary" onclick="fecharModal()" style="flex:1">Cancelar</button> 
+        </div> 
+    </div> 
+</div> 
+
+<div id="modalUsuario" class="modal no-print"> 
+    <div class="modal-content"> 
+        <h2 id="tituloModalUsuario">Cadastrar Usuário</h2> 
+        <input type="hidden" id="usuarioEditId">
+        <div class="form-group"><label>Nome Completo:</label><input type="text" id="cadNomeUser"></div> 
+        <div class="form-group"><label>Usuário de Login:</label><input type="text" id="cadLoginUser" style="text-transform: lowercase;" placeholder="Ex: joao.silva"></div> 
+        <div class="form-group"><label>Senha:</label><input type="text" id="cadSenhaUser" style="text-transform: none;"></div> 
+        <div class="form-group" id="containerPerfil">
+            <label>Atribuição (Perfil):</label>
+            <select id="cadPerfilUser">
+                <option value="BALANCEIRO">Balanceiro (Operador)</option>
+                <option value="CLASSIFICADOR">Classificador (Pátio)</option>
+                <option value="ADMIN">Administrador</option>
+            </select>
+        </div>
+        <div style="display:flex; gap:10px; margin-top:25px"> 
+            <button class="btn-success" onclick="salvarUsuario()" style="flex:1;">Salvar Usuário</button> 
+            <button class="btn-secondary" onclick="fecharModalUsuario()" style="flex:1">Cancelar</button> 
+        </div> 
+    </div> 
+</div>
+
+<div id="telaImpressao" class="overlay-impressao" style="display:none;"> 
+    <div class="ticket-wrapper"> 
+        <pre id="conteudoTicket" class="ticket-matricial"></pre> 
+    </div>
+    <div class="ticket-acoes no-print"> 
+        <button class="btn-success" onclick="window.print()">🖨️ Imprimir Ticket</button> 
+        <button class="btn-danger" onclick="fecharPreview()">❌ Fechar e Sair</button> 
+    </div> 
+</div> 
+
+<script> 
+    // ==========================================
+    // INICIALIZAÇÃO DE DADOS (LOCALSTORAGE)
+    // ==========================================
+    let clientes = JSON.parse(localStorage.getItem('pesagens_v4')) || []; 
+    let usuarios = JSON.parse(localStorage.getItem('usuarios_v3')) || [];
+    let clienteAtualIndex = null; 
+    let usuarioLogado = null;
+
+    if (usuarios.length === 0) {
+        usuarios.push({ id: 1, nome: 'ADMINISTRADOR DE SISTEMA', login: 'admin', senha: '123', perfil: 'ADMIN' });
+        localStorage.setItem('usuarios_v3', JSON.stringify(usuarios));
+    }
+
+    // ==========================================
+    // SISTEMA DE LOGIN E CONTROLE DE ACESSO
+    // ==========================================
+    function fazerLogin() {
+        const u = document.getElementById('usuario').value.trim().toLowerCase();
+        const p = document.getElementById('senha').value.trim();
+        const userEncontrado = usuarios.find(user => user.login === u && user.senha === p);
+
+        if(userEncontrado) {
+            usuarioLogado = userEncontrado;
+            document.getElementById('tela-login').style.display = 'none';
+            document.getElementById('tela-sistema').style.display = 'block';
+            
+            document.getElementById('nomeOperador').innerText = userEncontrado.nome;
+            document.getElementById('perfilOperador').innerText = userEncontrado.perfil;
+            
+            if(userEncontrado.perfil === 'ADMIN') {
+                document.getElementById('aba-usuarios').style.display = 'inline-block';
+            } else {
+                document.getElementById('aba-usuarios').style.display = 'none';
+            }
+
+            renderizarLista(); 
+            carregarClassificadoresCombo();
+        } else { 
+            alert("Login ou senha incorretos."); 
+        }
+    }
+
+    function sair() {
+        usuarioLogado = null;
+        document.getElementById('tela-sistema').style.display = 'none';
+        document.getElementById('tela-login').style.display = 'flex';
+        document.getElementById('senha').value = '';
+        mudarAba('pesagem'); 
+    }
+
+    function mudarAba(aba) {
+        document.querySelectorAll('.secao').forEach(s => s.classList.remove('ativa'));
+        document.querySelectorAll('.btn-aba').forEach(b => b.classList.remove('ativa'));
+        document.getElementById('secao-' + aba).classList.add('ativa');
+        document.getElementById('aba-' + aba).classList.add('ativa');
+        if(aba === 'usuarios') renderizarUsuarios();
+    }
+
+    // ==========================================
+    // MÓDULO ADMIN: GESTÃO DE USUÁRIOS
+    // ==========================================
+    function renderizarUsuarios() {
+        let corpo = document.getElementById('corpoTabelaUsuarios');
+        corpo.innerHTML = '';
+        usuarios.forEach(u => {
+            let badgeColor = u.perfil === 'ADMIN' ? '#e74c3c' : (u.perfil === 'CLASSIFICADOR' ? '#f39c12' : '#3498db');
+            let isEuMesmo = (u.id === usuarioLogado.id) ? ' <span style="font-size:0.7em; color:#27ae60;">(Você)</span>' : '';
+            
+            let botoesAcao = '';
+            if (u.id === 1) {
+                botoesAcao = `<button class="btn-warning" style="padding: 6px 12px; background-color: #34495e;" onclick="abrirModalUsuario(${u.id})">🔑 Mudar Senha</button>`;
+            } else {
+                botoesAcao = `<button class="btn-warning" style="padding: 6px 12px;" onclick="abrirModalUsuario(${u.id})">Editar</button>`;
+                if (u.id !== usuarioLogado.id) {
+                    botoesAcao += `<button class="btn-danger" style="padding: 6px 12px; margin-left:5px;" onclick="excluirUsuario(${u.id})">Excluir</button>`;
+                }
+            }
+
+            corpo.innerHTML += `
+                <tr>
+                    <td><strong>${u.nome}</strong>${isEuMesmo}</td>
+                    <td style="text-transform: lowercase;">${u.login}</td>
+                    <td><span style="background: ${badgeColor}; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.8em; font-weight:bold;">${u.perfil}</span></td>
+                    <td>${botoesAcao}</td>
+                </tr>
+            `;
+        });
+    }
+
+    function abrirModalUsuario(id = null) {
+        document.getElementById('modalUsuario').style.display = 'block';
+        const titulo = document.getElementById('tituloModalUsuario');
+        const containerPerfil = document.getElementById('containerPerfil');
+        
+        const cadNome = document.getElementById('cadNomeUser');
+        const cadLogin = document.getElementById('cadLoginUser');
+
+        if (id) {
+            const u = usuarios.find(x => x.id === id);
+            titulo.innerText = u.id === 1 ? "Alterar Senha de Emergência" : "Editar Usuário";
+            
+            document.getElementById('usuarioEditId').value = u.id;
+            cadNome.value = u.nome;
+            cadLogin.value = u.login;
+            document.getElementById('cadSenhaUser').value = u.senha;
+            document.getElementById('cadPerfilUser').value = u.perfil;
+            
+            if (u.id === 1) {
+                cadNome.disabled = true;
+                cadLogin.disabled = true;
+                containerPerfil.style.display = 'none';
+            } else {
+                cadNome.disabled = false;
+                cadLogin.disabled = false;
+                containerPerfil.style.display = (u.id === usuarioLogado.id) ? 'none' : 'flex';
+            }
+        } else {
+            titulo.innerText = "Novo Usuário";
+            document.getElementById('usuarioEditId').value = '';
+            cadNome.value = ''; cadNome.disabled = false;
+            cadLogin.value = ''; cadLogin.disabled = false;
+            document.getElementById('cadSenhaUser').value = '';
+            document.getElementById('cadPerfilUser').value = 'BALANCEIRO';
+            containerPerfil.style.display = 'flex';
+        }
+    }
+
+    function fecharModalUsuario() { document.getElementById('modalUsuario').style.display = 'none'; }
+
+    function salvarUsuario() {
+        const id = document.getElementById('usuarioEditId').value;
+        const nome = document.getElementById('cadNomeUser').value.toUpperCase();
+        const login = document.getElementById('cadLoginUser').value.toLowerCase().trim();
+        const senha = document.getElementById('cadSenhaUser').value;
+        const perfil = document.getElementById('cadPerfilUser').value;
+
+        if(!senha) return alert("A senha é obrigatória!");
+        if(id != 1 && (!nome || !login)) return alert("Preencha o Nome e o Usuário de Login!");
+        if(usuarios.find(u => u.login === login && u.id.toString() !== id)) return alert("Este Usuário de Login já está sendo utilizado.");
+
+        if (id) {
+            let u = usuarios.find(x => x.id.toString() === id);
+            u.senha = senha;
+            if (u.id !== 1) {
+                u.nome = nome; u.login = login;
+                if(u.id !== usuarioLogado.id) u.perfil = perfil;
+            }
+        } else {
+            usuarios.push({ id: Date.now(), nome, login, senha, perfil });
+        }
+
+        localStorage.setItem('usuarios_v3', JSON.stringify(usuarios));
+        fecharModalUsuario(); renderizarUsuarios(); carregarClassificadoresCombo();
+    }
+
+    function excluirUsuario(id) {
+        if (id === 1) return alert("A exclusão do ADMIN de emergência é bloqueada pelo sistema.");
+        if(confirm("Tem certeza que deseja excluir este usuário?")) {
+            usuarios = usuarios.filter(u => u.id !== id);
+            localStorage.setItem('usuarios_v3', JSON.stringify(usuarios));
+            renderizarUsuarios(); carregarClassificadoresCombo();
+        }
+    }
+
+    function carregarClassificadoresCombo() {
+        const combo = document.getElementById('classificadorAtribuido');
+        combo.innerHTML = '<option value="">Sem Atribuição</option>';
+        usuarios.forEach(u => {
+            if(u.perfil === 'CLASSIFICADOR' || u.perfil === 'ADMIN') {
+                combo.innerHTML += `<option value="${u.nome}">${u.nome}</option>`;
+            }
+        });
+    }
+
+    // ==========================================
+    // UTILITÁRIOS E MÁSCARAS
+    // ==========================================
+    const formatarNumero = (n) => new Intl.NumberFormat('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n); 
+
+    document.addEventListener('input', function(e) { 
+        if (e.target.tagName.toLowerCase() === 'input' && e.target.type === 'text' && e.target.id !== 'cadSenhaUser' && e.target.id !== 'cadLoginUser') { 
+            let start = e.target.selectionStart; let end = e.target.selectionEnd; 
+            e.target.value = e.target.value.toUpperCase(); 
+            e.target.setSelectionRange(start, end); 
+        } 
+    }); 
+
+    function bloquearSimbolos(e) { 
+        const controles = ['Backspace', 'Tab', 'Enter', 'Delete', 'ArrowLeft', 'ArrowRight']; 
+        const isNumero = (e.key >= '0' && e.key <= '9'); 
+        if (!isNumero && !controles.includes(e.key)) e.preventDefault(); 
+    } 
+
+    function mascaraMutuario(obj) { 
+        let v = obj.value.replace(/\D/g, ""); 
+        if (v.length <= 11) { v = v.replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d)/, "$1.$2").replace(/(\d{3})(\d{1,2})$/, "$1-$2"); } 
+        else { v = v.replace(/^(\d{2})(\d)/, "$1.$2").replace(/^(\d{2})\.(\d{3})(\d)/, "$1.$2.$3").replace(/\.(\d{3})(\d)/, ".$1/$2").replace(/(\d{4})(\d)/, "$1-$2"); } 
+        obj.value = v.substring(0, 18); 
+    } 
+    function mascaraPlaca(obj) { 
+        let v = obj.value.toUpperCase().replace(/[^A-Z0-9]/g, ""); 
+        if (v.length > 3) v = v.substring(0, 3) + "-" + v.substring(3, 7); 
+        obj.value = v.substring(0, 8); 
+    } 
+    function forçarLimitePeso(input) { 
+        if (parseFloat(input.value) > 100000) { input.value = 100000; alert("Limite máximo atingido."); }
+    } 
+
+    // ==========================================
+    // REGRAS DE BALANÇA
+    // ==========================================
+    function travarTaraAoBruto(input) { 
+        let bruto = parseFloat(document.getElementById('pesoAtualBruto').value) || 0; 
+        let valor = parseFloat(input.value) || 0; 
+        if (valor < 0) input.value = 0; if (valor > bruto) input.value = bruto; 
+        const descInput = document.getElementById('descontoManual'); 
+        if (valor > 0 && valor < bruto) { descInput.readOnly = false; } else { descInput.readOnly = true; descInput.value = ""; } 
+    } 
+
+    function travarDescontoAoLiquido(input) { 
+        let bruto = parseFloat(document.getElementById('pesoAtualBruto').value) || 0; 
+        let tara = parseFloat(document.getElementById('pesoTara').value) || 0; 
+        let valor = parseFloat(input.value) || 0; 
+        if (valor < 0) { input.value = 0; return; } 
+        let base = Math.max(0, bruto - tara); 
+        let mat = document.getElementById('tipoSucata').value; 
+        let d1 = ["SUC. FERRO ESTAMPARIA", "MATERIAL A CLASSIFICAR", "LATINHA A CLASSIFICAR", "INOX A CLASSIFICAR"].includes(mat) ? 0 : (base * 0.01); 
+        let max = Math.max(0, base - d1); 
+        if (valor > max) input.value = max.toFixed(2); 
+    } 
+
+    function verificarInputDesconto() { 
+        let dm = parseFloat(document.getElementById('descontoManual').value) || 0; 
+        let selectMotivo = document.getElementById('tipoDescontoManual');
+        if (dm > 0) { selectMotivo.disabled = false; } else { selectMotivo.disabled = true; selectMotivo.value = "NENHUM"; }
+    } 
+
+    function calcularLiquido() { 
+        let b = Math.max(0, parseFloat(document.getElementById('pesoAtualBruto').value) || 0); 
+        let t = Math.max(0, parseFloat(document.getElementById('pesoTara').value) || 0); 
+        let dm = Math.max(0, parseFloat(document.getElementById('descontoManual').value) || 0); 
+        let mat = document.getElementById('tipoSucata').value; 
+        let tipoD = document.getElementById('tipoDescontoManual').value;
+        let base = Math.max(0, b - t); 
+        let d1 = ["SUC. FERRO ESTAMPARIA", "MATERIAL A CLASSIFICAR", "LATINHA A CLASSIFICAR", "INOX A CLASSIFICAR"].includes(mat) ? 0 : (base * 0.01); 
+        let liq = Math.max(0, base - d1 - dm); 
+        
+        let msgErro = ""; let btn = false;
+        if (t <= 0) { msgErro = "Aguardando Tara."; btn = true; } 
+        else if (t >= b) { msgErro = "Tara inválida."; btn = true; } 
+        else if (dm > 0 && tipoD === "NENHUM") { msgErro = "Selecione o motivo."; btn = true; }
+
+        document.getElementById('msgErroPeso').innerText = msgErro; 
+        document.getElementById('resLiquido').innerText = formatarNumero(liq); 
+        document.getElementById('btnAdicionar').disabled = (btn || liq <= 0); 
+    } 
+
+    // ==========================================
+    // MÓDULO OPERACIONAL (BALANÇA)
+    // ==========================================
+    function abrirModal() { 
+        document.getElementById('modalCadastro').style.display = 'block'; 
+        document.getElementById('placa').value = '';
+        document.getElementById('pesoBrutoInicial').value = '';
+        document.getElementById('prazoLiberacao').value = '';
+        validarFormularioPrincipal();
+    } 
+    function fecharModal() { document.getElementById('modalCadastro').style.display = 'none'; } 
+    
+    function alternarCamposRegistro() { 
+        let t = document.getElementById('tipoRegistro').value; 
+        document.getElementById('camposFornecedor').style.display = t === 'cliente' ? 'block' : 'none'; 
+        document.getElementById('camposMotorista').style.display = t === 'motorista' ? 'block' : 'none'; 
+    } 
+
+    function validarFormularioPrincipal() { 
+        const tipo = document.getElementById('tipoRegistro').value; 
+        const placa = document.getElementById('placa').value.replace('-', ''); 
+        const peso = parseFloat(document.getElementById('pesoBrutoInicial').value); 
+        const btn = document.getElementById('btnSalvarRegistro'); 
+        let valido = placa.length >= 7 && !isNaN(peso) && peso > 0; 
+        if (tipo === 'cliente' && document.getElementById('nomeFornecedor').value.length < 2) valido = false; 
+        if (tipo === 'motorista' && document.getElementById('nomeMotorista').value.length < 2) valido = false; 
+        btn.disabled = !valido; btn.style.opacity = valido ? "1" : "0.5"; 
+    } 
+
+    function salvarNovoCliente() { 
+        let t = document.getElementById('tipoRegistro').value; 
+        
+        // Conversão da Data e Hora do input type="datetime-local" para formato BR
+        let rawPrazo = document.getElementById('prazoLiberacao').value;
+        let prazoFormatado = '';
+        if(rawPrazo) {
+            let partes = rawPrazo.split('T');
+            let dataP = partes[0].split('-');
+            prazoFormatado = `${dataP[2]}/${dataP[1]}/${dataP[0]} às ${partes[1]}`;
+        }
+
+        let novo = {  
+            tipo: t,  
+            placa: document.getElementById('placa').value,  
+            pesoBrutoInicial: Math.max(0, parseFloat(document.getElementById('pesoBrutoInicial').value)),  
+            dataHora: new Date().toLocaleString('pt-BR'),  
+            itens: [],  
+            finalizado: false, 
+            statusGestao: 'AGUARDANDO', 
+            classificador: document.getElementById('classificadorAtribuido').value,
+            prazoHora: prazoFormatado,
+            nome: t === 'cliente' ? document.getElementById('nomeFornecedor').value.toUpperCase() : document.getElementById('nomeMotorista').value.toUpperCase(), 
+            doc: t === 'cliente' ? document.getElementById('cpfCnpj').value : document.getElementById('ordemMotorista').value
+        }; 
+        clientes.push(novo); 
+        localStorage.setItem('pesagens_v4', JSON.stringify(clientes)); 
+        renderizarLista(); 
+        fecharModal(); 
+    } 
+
+    function renderizarLista() { 
+        let corpo = document.getElementById('corpoTabela'); 
+        let area = document.getElementById('areaOperacao'); 
+        document.getElementById('secao-pesagem').appendChild(area); area.style.display = 'none'; 
+        corpo.innerHTML = ''; 
+        
+        clientes.forEach((c, i) => { 
+            if (!c.finalizado) { 
+                let classif = c.classificador || 'Não atribuído';
+                let prazo = c.prazoHora ? `<span style="color:var(--danger); font-weight:bold;">${c.prazoHora}</span>` : '-';
+
+                let tr = document.createElement('tr'); 
+                tr.id = `linha-cliente-${i}`; 
+                tr.innerHTML = ` 
+                    <td style="font-weight: 600;">${c.tipo.toUpperCase()}</td> 
+                    <td>${c.nome}</td> 
+                    <td><span style="background: #e2e8f0; padding: 4px 8px; border-radius: 4px; font-family: monospace; font-size: 1.1em;">${c.placa}</span></td> 
+                    <td style="color: #64748b; font-size: 0.8em;">${c.dataHora.split(' ')[1]}</td> 
+                    <td style="font-size: 0.85em; font-weight:bold; color: var(--secondary);">${classif}</td> 
+                    <td style="font-size: 0.8em;">${prazo}</td> 
+                    <td> 
+                        <button class="btn-primary" onclick="selecionarCliente(${i})">Operar</button> 
+                        <button class="btn-danger" style="padding: 10px 15px;" onclick="excluirRegistro(${i})">✕</button> 
+                    </td> 
+                `; 
+                corpo.appendChild(tr); 
+                let trOp = document.createElement('tr'); 
+                trOp.id = `linha-operacao-${i}`; trOp.style.display = 'none'; 
+                trOp.innerHTML = `<td colspan="7" id="container-operacao-${i}" class="td-operacao"></td>`; 
+                corpo.appendChild(trOp); 
+            } 
+        }); 
+        if (clienteAtualIndex !== null && clientes[clienteAtualIndex] && !clientes[clienteAtualIndex].finalizado) { selecionarCliente(clienteAtualIndex); } 
+        renderizarGestao(); 
+    } 
+
+    function selecionarCliente(i) { 
+        clienteAtualIndex = i; 
+        document.querySelectorAll('tr[id^="linha-cliente-"]').forEach(tr => tr.classList.remove('linha-selecionada')); 
+        document.querySelectorAll('tr[id^="linha-operacao-"]').forEach(tr => tr.style.display = 'none'); 
+        document.getElementById(`linha-cliente-${i}`).classList.add('linha-selecionada'); 
+        document.getElementById(`linha-operacao-${i}`).style.display = 'table-row'; 
+        
+        document.getElementById(`container-operacao-${i}`).appendChild(document.getElementById('areaOperacao')); 
+        document.getElementById('areaOperacao').style.display = 'block'; 
+
+        document.getElementById('tituloOperacao').innerText = "Processando: " + clientes[i].nome + " | Placa: " + clientes[i].placa; 
+        document.getElementById('pesoAtualBruto').value = clientes[i].itens.length > 0 ? clientes[i].itens[clientes[i].itens.length - 1].t : clientes[i].pesoBrutoInicial; 
+        document.getElementById('pesoTara').value = ''; 
+        document.getElementById('descontoManual').value = ''; document.getElementById('descontoManual').readOnly = true; 
+        verificarInputDesconto(); atualizarListaItens(); calcularLiquido(); 
+    } 
+
+    function adicionarItem() { 
+        let b = parseFloat(document.getElementById('pesoAtualBruto').value); 
+        let t = parseFloat(document.getElementById('pesoTara').value); 
+        let dm = parseFloat(document.getElementById('descontoManual').value) || 0; 
+        let mat = document.getElementById('tipoSucata').value; 
+        let base = Math.max(0, b - t); 
+        let d1 = ["SUC. FERRO ESTAMPARIA", "MATERIAL A CLASSIFICAR"].includes(mat) ? 0 : (base * 0.01); 
+        
+        clientes[clienteAtualIndex].itens.push({ mat, b, t, d1, dm, dt: (d1 + dm), tipoD: document.getElementById('tipoDescontoManual').value, liq: (base - d1 - dm), obs: document.getElementById('obsItem').value }); 
+        clientes[clienteAtualIndex].statusGestao = 'PATIO'; 
+        
+        document.getElementById('pesoAtualBruto').value = t; 
+        document.getElementById('pesoTara').value = ''; 
+        document.getElementById('descontoManual').value = ''; document.getElementById('descontoManual').readOnly = true; 
+        document.getElementById('tipoDescontoManual').value = 'NENHUM'; document.getElementById('tipoDescontoManual').disabled = true;
+        document.getElementById('obsItem').value = ''; 
+        
+        localStorage.setItem('pesagens_v4', JSON.stringify(clientes)); 
+        atualizarListaItens(); calcularLiquido(); renderizarGestao();
+    } 
+
+    function atualizarListaItens() { 
+        let corpo = document.getElementById('corpoItens'); corpo.innerHTML = ''; 
+        if(clienteAtualIndex !== null && clientes[clienteAtualIndex].itens.length > 0) { 
+            clientes[clienteAtualIndex].itens.forEach((item, index) => { 
+                let acao = index === clientes[clienteAtualIndex].itens.length - 1 ? `<button class="btn-danger" style="padding: 6px 12px;" onclick="excluirItem(${index})">Desfazer</button>` : `<span style="color: #94a3b8; font-weight: bold;">SALVO</span>`; 
+                corpo.innerHTML += `<tr><td style="font-weight: 500;">${item.mat}</td><td style="color: var(--primary); font-weight: bold;">${formatarNumero(item.liq)} kg</td><td style="color: #64748b; font-style: italic;">${item.obs || '-'}</td><td>${acao}</td></tr>`; 
+            }); 
+        } else { corpo.innerHTML = `<tr><td colspan="4" style="text-align: center; color: #94a3b8; padding: 20px;">Nenhum material classificado ainda.</td></tr>`; } 
+    } 
+
+    function excluirItem(idx) { 
+        if (confirm("Desfazer tara?")) { 
+            clientes[clienteAtualIndex].itens.splice(idx, 1); 
+            if(clientes[clienteAtualIndex].itens.length === 0) clientes[clienteAtualIndex].statusGestao = 'AGUARDANDO';
+            document.getElementById('pesoAtualBruto').value = clientes[clienteAtualIndex].itens.length > 0 ? clientes[clienteAtualIndex].itens[clientes[clienteAtualIndex].itens.length - 1].t : clientes[clienteAtualIndex].pesoBrutoInicial; 
+            localStorage.setItem('pesagens_v4', JSON.stringify(clientes)); atualizarListaItens(); calcularLiquido(); renderizarGestao();
+        } 
+    } 
+    function excluirRegistro(i) { if (confirm("Excluir registro inteiro?")) { clientes.splice(i, 1); localStorage.setItem('pesagens_v4', JSON.stringify(clientes)); renderizarLista(); } } 
+
+    // ==========================================
+    // BACKUP E IMPRESSÃO MATRICIAL
+    // ==========================================
+    function gerarBackupJSON(cliente) { 
+        const link = document.createElement('a'); 
+        link.href = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(cliente, null, 2)); 
+        link.download = `pesagem_${cliente.placa}.json`; link.click(); 
+    } 
+    function importarBackup(event) { 
+        const reader = new FileReader(); 
+        reader.onload = function(e) { 
+            let d = JSON.parse(e.target.result); 
+            if (!Array.isArray(d)) { d.finalizado = false; d.statusGestao = d.statusGestao || 'AGUARDANDO'; clientes.push(d); } 
+            else { d.forEach(x => { x.finalizado = false; x.statusGestao = x.statusGestao || 'AGUARDANDO'; }); clientes = clientes.concat(d); } 
+            localStorage.setItem('pesagens_v4', JSON.stringify(clientes)); renderizarLista(); alert("Importado!"); event.target.value = '';  
+        }; reader.readAsText(event.target.files[0]); 
+    } 
+
+    function finalizarBoleto() { 
+        const c = clientes[clienteAtualIndex]; 
+        if (!c.itens || c.itens.length === 0) return alert("Adicione materiais primeiro."); 
+        let liqTotal = c.itens.reduce((acc, item) => acc + item.liq, 0); 
+        const [data, hora] = c.dataHora.split(' '); 
+        const div = "-".repeat(108); 
+        let html = " ".repeat(38) + "DEMONSTRATIVO - SEM VALOR FISCAL\n" + " ".repeat(47) + "*** COMPRA ***\n" + " ".repeat(37) + "IPIRANGA RECICLAGEM DE METAIS LTDA\n" + `${div}\n` + `DATA: ${data} | HORA: ${hora}\n`;
+        html += `NOME: ${c.nome.toUpperCase()}\nDOC: ${c.doc || '-'}\nPLACA: ${c.placa}\n${div}\n`;
+        html += `DESCRIÇÃO DO PRODUTO       | BRUTO      | TARA       | DESC. MAN. | DESC. 1%   | DESC. TOTAL | TOTAL LÍQUIDO\n${div}\n`; 
+        c.itens.forEach(i => { 
+            html += `${i.mat.substring(0,26).padEnd(26)} | ${(formatarNumero(i.b)+"kg").padStart(10)} | ${(formatarNumero(i.t)+"kg").padStart(10)} | ${(formatarNumero(i.dm)+"kg").padStart(10)} | ${(formatarNumero(i.d1)+"kg").padStart(10)} | ${(formatarNumero(i.dt)+"kg").padStart(11)} | ${(formatarNumero(i.liq)+"kg").padStart(13)}\n`; 
+            if (i.dm > 0 || i.obs) html += ` > MOTIVO DE DESCONTO: ${(i.tipoD!=="NENHUM"?i.tipoD:"-").padEnd(20)} | OBSERVAÇÃO: ${i.obs || "-"}\n`; 
+        }); 
+        html += `${div}\nTOTAL LÍQUIDO GERAL: ${formatarNumero(liqTotal)}kg\n`; 
+        
+        gerarBackupJSON(c); document.getElementById('conteudoTicket').innerHTML = html; document.getElementById('telaImpressao').style.display = 'flex'; 
+    } 
+
+    function fecharPreview() { 
+        clientes[clienteAtualIndex].finalizado = true; clientes[clienteAtualIndex].statusGestao = 'FINALIZADO';
+        localStorage.setItem('pesagens_v4', JSON.stringify(clientes)); document.getElementById('telaImpressao').style.display = 'none';
+        clienteAtualIndex = null; renderizarLista(); 
+    } 
+
+    // ==========================================
+    // MÓDULO GESTÃO (KANBAN)
+    // ==========================================
+    function renderizarGestao() {
+        document.getElementById('lista-aguardando').innerHTML = ''; document.getElementById('lista-patio').innerHTML = ''; document.getElementById('lista-finalizado').innerHTML = '';
+        clientes.forEach(c => {
+            let statusClass = (!c.statusGestao || c.statusGestao === 'AGUARDANDO') ? 'status-aguardando' : (c.statusGestao === 'PATIO' ? 'status-patio' : 'status-finalizado');
+            let info = c.itens && c.itens.length > 0 ? `${c.itens.length} classificação(ões)` : `Bruto: ${c.pesoBrutoInicial}kg`;
+            let responsavel = c.classificador ? `Resp: ${c.classificador}` : 'Resp: Pendente';
+            
+            // Layout adaptado para receber a string inteira de Data e Hora
+            let prazoTag = c.prazoHora ? `<div class="card-prazo" style="display:block; position:static; margin-bottom: 8px; text-align: left;">Lim: ${c.prazoHora}</div>` : '';
+
+            let card = `
+                <div class="card ${statusClass}">
+                    ${prazoTag}
+                    <strong style="font-size: 1.1em; color: var(--primary);">${c.placa}</strong><br>
+                    <span style="font-size: 0.85em; color: #475569;">${c.nome}</span><br>
+                    <div style="margin-top: 8px; border-top: 1px dashed #cbd5e1; padding-top: 5px;">
+                        <span style="font-size: 0.8em; color: var(--secondary); font-weight: bold;">👤 ${responsavel}</span><br>
+                        <span style="font-size: 0.8em; font-weight: bold; color: #94a3b8;">⚖️ ${info}</span>
+                    </div>
+                </div>`;
+            if(statusClass === 'status-aguardando') document.getElementById('lista-aguardando').innerHTML += card;
+            else if(statusClass === 'status-patio') document.getElementById('lista-patio').innerHTML += card;
+            else document.getElementById('lista-finalizado').innerHTML += card;
+        });
+    }
+
+</script> 
+</body> 
+</html>
